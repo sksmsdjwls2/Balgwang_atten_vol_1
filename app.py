@@ -616,33 +616,74 @@ def main():
     elif menu == "출석 기록 수정":
         st.header("출석 기록 수정")
         
+        # === 여러 명 일괄 수정 ===
+        st.subheader(":blue[여러 명 출석 상태 일괄 수정]")
+        batch_date = st.date_input(
+            "수정할 출석 날짜를 선택하세요 (일괄)",
+            value=datetime.now(),
+            key="batch_date"
+        )
+        batch_names = st.text_input(
+            "수정할 동아리원 이름을 입력하세요 (쉼표나 공백으로 구분)",
+            help="예시: 홍길동, 김철수 이영희",
+            key="batch_names"
+        )
+        batch_status = st.radio(
+            "새로운 출석 상태를 선택하세요 (일괄)",
+            ["출석", "지각", "결석"],
+            key="batch_status"
+        )
+        if st.button("여러 명 출석 상태 일괄 수정"):
+            if batch_names:
+                name_list = [name.strip() for name in batch_names.replace(',', ' ').split() if name.strip()]
+                df = pd.read_excel(system.data_file)
+                members = system.get_members_list()
+                updated = 0
+                not_found = []
+                for name in name_list:
+                    if name not in members:
+                        not_found.append(name)
+                        continue
+                    mask = (df['날짜'] == batch_date.strftime('%Y-%m-%d')) & (df['이름'] == name)
+                    if mask.any():
+                        df.loc[mask, '출석상태'] = batch_status
+                        updated += 1
+                    else:
+                        st.info(f"{batch_date.strftime('%Y-%m-%d')}에 {name}님의 출석 기록이 없습니다. (자동 추가는 지원하지 않음)")
+                if updated > 0:
+                    df.to_excel(system.data_file, index=False)
+                    st.success(f"{updated}명의 출석 상태가 일괄 수정되었습니다.")
+                if not_found:
+                    st.warning(f"다음 이름은 동아리원 목록에 없습니다: {', '.join(not_found)}")
+            else:
+                st.warning("이름을 입력해주세요.")
+        
+        # === 기존 한 명씩 수정 ===
+        st.subheader(":blue[한 명씩 출석 상태 수정]")
         # 날짜 선택
         selected_date = st.date_input(
             "수정할 출석 날짜를 선택하세요",
             value=datetime.now(),
-            format="YYYY-MM-DD"
+            key="single_date"
         )
-        
         # 해당 날짜의 출석 기록 가져오기
         df = system.view_attendance(selected_date.strftime('%Y-%m-%d'))
-        
         if len(df) > 0:
             # 이름 선택
             name = st.selectbox(
                 "수정할 동아리원을 선택하세요",
-                options=df['이름'].unique()
+                options=df['이름'].unique(),
+                key="single_name"
             )
-            
             # 현재 출석 상태 표시
             current_status = df[df['이름'] == name]['출석상태'].iloc[0]
             st.write(f"현재 출석 상태: {current_status}")
-            
             # 새로운 출석 상태 선택
             new_status = st.radio(
                 "새로운 출석 상태를 선택하세요",
-                ["출석", "지각", "결석"]
+                ["출석", "지각", "결석"],
+                key="single_status"
             )
-            
             if st.button("출석 상태 수정"):
                 success, message = system.modify_attendance(
                     selected_date.strftime('%Y-%m-%d'),
