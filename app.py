@@ -329,6 +329,29 @@ class AttendanceSystem:
                 })
         return summary
 
+    def auto_fill_absent(self):
+        """정기 연습 날짜와 동아리원 기준으로 출결 기록이 없는 경우 자동 결석 처리"""
+        df = pd.read_excel(self.data_file)
+        members = self.get_members_list()
+        practice_dates = self.get_practice_dates()
+        updated = 0
+        for date in practice_dates:
+            for name, dept in members.items():
+                # 해당 날짜에 출결 기록이 없으면 결석 처리
+                if not ((df['날짜'] == date) & (df['이름'] == name)).any():
+                    new_record = pd.DataFrame({
+                        '날짜': [date],
+                        '이름': [name],
+                        '부서': [dept],
+                        '출석상태': ['결석'],
+                        '비고': ['']
+                    })
+                    df = pd.concat([df, new_record], ignore_index=True)
+                    updated += 1
+        if updated > 0:
+            df.to_excel(self.data_file, index=False)
+        return updated
+
 def main():
     st.set_page_config(page_title="동아리 출결 관리 시스템", layout="wide")
     
@@ -718,6 +741,15 @@ def main():
                     st.success(message)
                 else:
                     st.error(message)
+        
+        # 자동 결석 처리 버튼
+        st.subheader(":red[자동 결석 처리]")
+        if st.button("정기 연습 날짜 기준 자동 결석 처리"):
+            updated = system.auto_fill_absent()
+            if updated > 0:
+                st.success(f"{updated}건의 결석 기록이 자동으로 추가되었습니다.")
+            else:
+                st.info("추가된 결석 기록이 없습니다. (이미 모든 기록이 존재합니다)")
 
 if __name__ == "__main__":
     main() 
