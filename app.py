@@ -7,7 +7,7 @@ import plotly.express as px
 class AttendanceSystem:
     def __init__(self):
         self.data_file = 'attendance_data.xlsx'
-        self.members_file = 'members_list.txt'
+        self.members_file = 'members_list_2627gen.txt'
         self.practice_dates_file = 'practice_dates.txt'
         self.departments = ['락킹', '왁킹', '힙합', '걸스힙합', '하우스', '브레이킹']
         self.initialize_data_file()
